@@ -2,16 +2,33 @@
 #include <ATen/ATen.h>
 #include <ATen/cuda/CUDAContext.h>
 
-#include <THC/THC.h>
+//#include <THC/THC.h>
 #include <THC/THCAtomics.cuh>
-#include <THC/THCDeviceUtils.cuh>
+//#include <THC/THCDeviceUtils.cuh>
 
+#include <cfloat>
 
 // TODO make it in a common file
 #define CUDA_1D_KERNEL_LOOP(i, n)                            \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < n; \
        i += blockDim.x * gridDim.x)
 
+
+//Hacks to remove THC dependencies
+# define THC_EXTERNC extern "C"
+# define THC_API THC_EXTERNC
+#define THCudaCheck(err)  __THCudaCheck(err, __FILE__, __LINE__)
+THC_API void __THCudaCheck(cudaError_t err, const char *file, const int line);
+
+/**
+   Computes ceil(a / b)
+*/
+template <typename T>
+__host__ __device__ __forceinline__ T THCCeilDiv(T a, T b) {
+  return (a + b - 1) / b;
+}
+
+//End of Hacks to remove THC dependencies
 
 template <typename T>
 __global__ void RoIPoolFForward(const int nthreads, const T* bottom_data,
